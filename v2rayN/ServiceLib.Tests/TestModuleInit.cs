@@ -7,6 +7,6 @@ internal static class TestModuleInit
     [ModuleInitializer]
     internal static void DisableLiveTxtQueries()
     {
-        TxtEndpointResolver.QueryOverride = _ => ([], 0);
+        TxtEndpointResolver.AllowLiveQueries = false;
     }
 }

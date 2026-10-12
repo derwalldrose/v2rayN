@@ -12,7 +12,15 @@ public static class TxtEndpointResolver
     private static readonly Lock CacheLock = new();
     private static readonly IdnMapping Idn = new();
 
-    public static Func<string, (IReadOnlyList<string> Records, int Ttl)?>? QueryOverride { get; set; }
+    private static readonly AsyncLocal<Func<string, (IReadOnlyList<string> Records, int Ttl)?>?> QueryOverrideLocal = new();
+
+    public static bool AllowLiveQueries { get; set; } = true;
+
+    public static Func<string, (IReadOnlyList<string> Records, int Ttl)?>? QueryOverride
+    {
+        get => QueryOverrideLocal.Value;
+        set => QueryOverrideLocal.Value = value;
+    }
 
     public static bool PrefersTxt(string? host)
     {
@@ -120,7 +128,18 @@ public static class TxtEndpointResolver
         (IReadOnlyList<string> Records, int Ttl)? answer;
         try
         {
-            answer = QueryOverride is not null ? QueryOverride(key) : QueryUdpTxt(key);
+            if (QueryOverride is not null)
+            {
+                answer = QueryOverride(key);
+            }
+            else if (AllowLiveQueries)
+            {
+                answer = QueryUdpTxt(key);
+            }
+            else
+            {
+                return null;
+            }
         }
         catch (Exception ex)
         {

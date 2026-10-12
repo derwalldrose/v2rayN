@@ -2,23 +2,8 @@ using ServiceLib.Tests.CoreConfig;
 
 namespace ServiceLib.Tests.Common;
 
-public class TxtNetworkGuard
-{
-    [Before(TestSession)]
-    public static void DisableLiveTxtQueries()
-    {
-        TxtEndpointResolver.QueryOverride = _ => ([], 0);
-    }
-}
-
 public class TxtEndpointResolverTests
 {
-    [After(Test)]
-    public void ResetQuery()
-    {
-        TxtEndpointResolver.QueryOverride = _ => ([], 0);
-    }
-
     [Test]
     public async Task Parse_AcceptsStrictLiterals()
     {
@@ -55,8 +40,12 @@ public class TxtEndpointResolverTests
             : ([], 0);
 
         await TxtEndpointResolver.Resolve("kr.example.test")!.Value.Should().BeEqualTo(new TxtEndpoint("192.0.2.10", 10000));
-        await TxtEndpointResolver.ResolveDial("192.0.2.8", 443).Should().BeEqualTo(("192.0.2.8", 443));
-        await TxtEndpointResolver.ResolveDial("none.example.test", 8443).Should().BeEqualTo(("none.example.test", 8443));
+        var ipDial = TxtEndpointResolver.ResolveDial("192.0.2.8", 443);
+        await ipDial.Address.Should().BeEqualTo("192.0.2.8");
+        await ipDial.Port.Should().BeEqualTo(443);
+        var fallback = TxtEndpointResolver.ResolveDial("none.example.test", 8443);
+        await fallback.Address.Should().BeEqualTo("none.example.test");
+        await fallback.Port.Should().BeEqualTo(8443);
     }
 
     [Test]
