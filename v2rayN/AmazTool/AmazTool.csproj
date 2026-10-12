@@ -2,6 +2,9 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
+		<AssemblyName>derwalld-tool</AssemblyName>
+		<Product>derwalld</Product>
+		<AssemblyTitle>derwalld-tool</AssemblyTitle>
 	</PropertyGroup>
 
 	<ItemGroup>

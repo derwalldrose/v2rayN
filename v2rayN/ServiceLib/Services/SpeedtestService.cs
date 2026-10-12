@@ -218,7 +218,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             {
                 try
                 {
-                    var responseTime = await GetTcpingTime(item.Address, item.Port, innerCt);
+                    var (dialAddress, dialPort) = TxtEndpointResolver.ResolveDial(item.Address, item.Port);
+                    var responseTime = await GetTcpingTime(dialAddress, dialPort, innerCt);
 
                     ProfileExManager.Instance.SetTestDelay(item.IndexId, responseTime);
                     await UpdateFunc(item.IndexId, responseTime.ToString());

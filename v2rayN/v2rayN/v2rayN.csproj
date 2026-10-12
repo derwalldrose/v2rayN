@@ -6,6 +6,9 @@
 		<GenerateSatelliteAssembliesForCore>true</GenerateSatelliteAssembliesForCore>
 		<UseWPF>true</UseWPF>
 		<ApplicationIcon>Resources\v2rayN.ico</ApplicationIcon>
+		<AssemblyName>derwalld</AssemblyName>
+		<Product>derwalld</Product>
+		<AssemblyTitle>derwalld</AssemblyTitle>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
 		<SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>

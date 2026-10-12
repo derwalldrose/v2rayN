@@ -90,7 +90,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: x64
-          path: v2rayN-windows-64
+          path: derwalld-windows-64
 
       - name: Get and slim official core-bin
         run: |
@@ -102,33 +102,38 @@ jobs:
       - name: Merge app into slimmed core-bin zip
         run: |
           set -euo pipefail
-          test -f v2rayN-windows-64/v2rayN.exe
-          test -f v2rayN-windows-64/AmazTool.exe
-          7z a -tZip v2rayN-windows-64.zip v2rayN-windows-64 -mx9
-          unzip -l v2rayN-windows-64.zip | tee listing.txt
-          grep -F 'v2rayN-windows-64/v2rayN.exe' listing.txt
-          grep -F 'v2rayN-windows-64/AmazTool.exe' listing.txt
-          grep -E 'v2rayN-windows-64/.+\.dll' listing.txt
-          grep -F 'v2rayN-windows-64/bin/xray/xray.exe' listing.txt
-          grep -F 'v2rayN-windows-64/bin/EnableLoopback.exe' listing.txt
-          grep -F 'v2rayN-windows-64/bin/geoip.dat' listing.txt
-          grep -F 'v2rayN-windows-64/bin/geosite.dat' listing.txt
-          ! grep -Ei 'sing-box|sing_box|mihomo|\.srs|geoip\.metadb|Country\.mmdb' listing.txt
+          test -f derwalld-windows-64/derwalld.exe
+          test -f derwalld-windows-64/derwalld-tool.exe
+          test ! -e derwalld-windows-64/v2rayN.exe
+          unzip -q v2rayN-windows-64.zip -d core-bin
+          mkdir -p derwalld-windows-64/bin
+          cp -a core-bin/v2rayN-windows-64/bin/. derwalld-windows-64/bin/
+          rm -f derwalld-windows-64.zip
+          7z a -tZip derwalld-windows-64.zip derwalld-windows-64 -mx9
+          unzip -l derwalld-windows-64.zip | tee listing.txt
+          grep -F 'derwalld-windows-64/derwalld.exe' listing.txt
+          grep -F 'derwalld-windows-64/derwalld-tool.exe' listing.txt
+          grep -E 'derwalld-windows-64/.+\.dll' listing.txt
+          grep -F 'derwalld-windows-64/bin/xray/xray.exe' listing.txt
+          grep -F 'derwalld-windows-64/bin/EnableLoopback.exe' listing.txt
+          grep -F 'derwalld-windows-64/bin/geoip.dat' listing.txt
+          grep -F 'derwalld-windows-64/bin/geosite.dat' listing.txt
+          ! grep -Ei 'v2rayN\.exe|AmazTool\.exe|sing-box|sing_box|mihomo|\.srs|geoip\.metadb|Country\.mmdb' listing.txt
           python3 - <<'PY'
           import zipfile
-          z = zipfile.ZipFile("v2rayN-windows-64.zip")
+          z = zipfile.ZipFile("derwalld-windows-64.zip")
           names = z.namelist()
           required = [
-              "v2rayN-windows-64/v2rayN.exe",
-              "v2rayN-windows-64/AmazTool.exe",
-              "v2rayN-windows-64/bin/xray/xray.exe",
-              "v2rayN-windows-64/bin/xray/wintun.dll",
-              "v2rayN-windows-64/bin/EnableLoopback.exe",
+              "derwalld-windows-64/derwalld.exe",
+              "derwalld-windows-64/derwalld-tool.exe",
+              "derwalld-windows-64/bin/xray/xray.exe",
+              "derwalld-windows-64/bin/xray/wintun.dll",
+              "derwalld-windows-64/bin/EnableLoopback.exe",
           ]
           missing = [n for n in required if n not in names]
           if missing:
               raise SystemExit("missing: " + ", ".join(missing))
-          dlls = [n for n in names if n.startswith("v2rayN-windows-64/") and n.endswith(".dll") and "/bin/" not in n]
+          dlls = [n for n in names if n.startswith("derwalld-windows-64/") and n.endswith(".dll") and "/bin/" not in n]
           if len(dlls) < 3:
               raise SystemExit(f"too few app DLLs: {dlls}")
           print("files", len(names), "app_dlls", len(dlls), "bytes", sum(i.file_size for i in z.infolist()))
@@ -136,7 +141,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: v2rayN-windows-64-xray-only
-          path: v2rayN-windows-64.zip
+          name: derwalld-windows-64
+          path: derwalld-windows-64.zip
           if-no-files-found: error
           compression-level: 9

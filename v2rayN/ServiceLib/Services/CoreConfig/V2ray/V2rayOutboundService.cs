@@ -70,12 +70,13 @@ public partial class CoreConfigV2rayService
             var protocolExtra = _node.GetProtocolExtra();
             var muxEnabled = _node.MuxEnabled ?? false;
             var outboundSettings = outbound.settings;
+            var (dialAddress, dialPort) = TxtEndpointResolver.ResolveDial(_node.Address, _node.Port);
             switch (_node.ConfigType)
             {
                 case EConfigType.VMess:
                     {
-                        outboundSettings.address = _node.Address;
-                        outboundSettings.port = _node.Port;
+                        outboundSettings.address = dialAddress;
+                        outboundSettings.port = dialPort;
                         outboundSettings.id = _node.Password;
                         outboundSettings.alterId = int.TryParse(protocolExtra?.AlterId, out var result) ? result : 0;
                         outboundSettings.email = Global.UserEMail;
@@ -93,8 +94,8 @@ public partial class CoreConfigV2rayService
                     }
                 case EConfigType.Shadowsocks:
                     {
-                        outboundSettings.address = _node.Address;
-                        outboundSettings.port = _node.Port;
+                        outboundSettings.address = dialAddress;
+                        outboundSettings.port = dialPort;
                         outboundSettings.password = _node.Password;
                         outboundSettings.method = AppManager.Instance.GetShadowsocksSecurities(_node).Contains(protocolExtra.SsMethod)
                             ? protocolExtra.SsMethod : "none";
@@ -108,8 +109,8 @@ public partial class CoreConfigV2rayService
                     }
                 case EConfigType.SOCKS:
                     {
-                        outboundSettings.address = _node.Address;
-                        outboundSettings.port = _node.Port;
+                        outboundSettings.address = dialAddress;
+                        outboundSettings.port = dialPort;
                         if (_node.Username.IsNotEmpty()
                             && _node.Password.IsNotEmpty())
                         {
@@ -124,8 +125,8 @@ public partial class CoreConfigV2rayService
                     }
                 case EConfigType.HTTP:
                     {
-                        outboundSettings.address = _node.Address;
-                        outboundSettings.port = _node.Port;
+                        outboundSettings.address = dialAddress;
+                        outboundSettings.port = dialPort;
 
                         if (protocolExtra.HttpHeaders.IsNotEmpty())
                         {
@@ -146,8 +147,8 @@ public partial class CoreConfigV2rayService
                     }
                 case EConfigType.VLESS:
                     {
-                        outboundSettings.address = _node.Address;
-                        outboundSettings.port = _node.Port;
+                        outboundSettings.address = dialAddress;
+                        outboundSettings.port = dialPort;
                         outboundSettings.id = _node.Password;
                         outboundSettings.email = Global.UserEMail;
                         outboundSettings.encryption = protocolExtra.VlessEncryption;
@@ -165,8 +166,8 @@ public partial class CoreConfigV2rayService
                     }
                 case EConfigType.Trojan:
                     {
-                        outboundSettings.address = _node.Address;
-                        outboundSettings.port = _node.Port;
+                        outboundSettings.address = dialAddress;
+                        outboundSettings.port = dialPort;
                         outboundSettings.password = _node.Password;
 
                         outboundSettings.ota = false;
@@ -177,20 +178,20 @@ public partial class CoreConfigV2rayService
                     }
                 case EConfigType.Hysteria2:
                     {
-                        outboundSettings.address = _node.Address;
-                        outboundSettings.port = _node.Port;
+                        outboundSettings.address = dialAddress;
+                        outboundSettings.port = dialPort;
                         outboundSettings.version = 2;
                         break;
                     }
                 case EConfigType.MASQUE:
                     {
-                        outboundSettings.address = _node.Address;
-                        outboundSettings.port = _node.Port;
+                        outboundSettings.address = dialAddress;
+                        outboundSettings.port = dialPort;
                         break;
                     }
                 case EConfigType.WireGuard:
                     {
-                        var address = _node.Address;
+                        var address = dialAddress;
                         if (Utils.IsIpv6(address))
                         {
                             address = $"[{address}]";
@@ -198,7 +199,7 @@ public partial class CoreConfigV2rayService
                         var peer = new WireguardPeer4Ray
                         {
                             publicKey = protocolExtra.WgPublicKey ?? "",
-                            endpoint = address + ":" + _node.Port.ToString(),
+                            endpoint = address + ":" + dialPort.ToString(),
                             preSharedKey = protocolExtra.WgPresharedKey,
                         };
                         var setting = new Outboundsettings4Ray
