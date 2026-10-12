@@ -65,7 +65,7 @@ public class TxtEndpointResolverTests
         TxtEndpointResolver.QueryOverride = _ => (["192.0.2.10:10000"], 60);
         var config = CoreConfigTestFactory.CreateConfig();
         CoreConfigTestFactory.BindAppManagerConfig(config);
-        var node = CoreConfigTestFactory.CreateVmessNode();
+        var node = CoreConfigTestFactory.CreateVmessNode(ECoreType.Xray);
         node.Address = "kr.example.test";
         node.Port = 443;
         node.StreamSecurity = Global.StreamSecurity;
