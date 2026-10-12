@@ -361,7 +361,6 @@ public class Global
     public static readonly List<string> CoreTypes =
     [
         "Xray",
-        "sing_box"
     ];
 
     public static readonly HashSet<EConfigType> XraySupportConfigType =
@@ -671,8 +670,6 @@ public class Global
     public static readonly List<string> OtherGeoUrls =
     [
         @"https://raw.githubusercontent.com/Loyalsoldier/geoip/release/geoip-only-cn-private.dat",
-        @"https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country.mmdb",
-        @"https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
     ];
 
     public static readonly List<string> IPAPIUrls =

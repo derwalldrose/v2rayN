@@ -1,0 +1,53 @@
+name: Xray-only cores
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/xray-only-core
+      - feat/txt-dynamic-endpoint
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.x'
+          dotnet-quality: 'ga'
+
+      - name: Test
+        run: dotnet test ./v2rayN/ServiceLib.Tests -c Release
+
+  slim-core-bin:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pack: [v2rayN-windows-64, v2rayN-linux-64]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download and slim official core-bin
+        run: |
+          set -euo pipefail
+          wget -nv -O "${{ matrix.pack }}.zip" \
+            "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/master/${{ matrix.pack }}.zip"
+          before=$(stat -c%s "${{ matrix.pack }}.zip")
+          bash scripts/slim-core-bin.sh "${{ matrix.pack }}.zip"
+          after=$(stat -c%s "${{ matrix.pack }}.zip")
+          echo "before=$before after=$after saved=$((before-after))" | tee "$GITHUB_STEP_SUMMARY"
+          unzip -l "${{ matrix.pack }}.zip" | tee listing.txt
+          ! grep -Ei 'sing-box|sing_box|mihomo|\.srs|geoip\.metadb|Country\.mmdb' listing.txt
+          grep -E 'bin/xray/xray' listing.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.pack }}-xray-only
+          path: ${{ matrix.pack }}.zip
+          if-no-files-found: error
+          compression-level: 0

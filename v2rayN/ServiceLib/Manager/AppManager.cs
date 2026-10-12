@@ -658,20 +658,16 @@ public sealed class AppManager
                 return Global.SsSecuritiesInXray;
 
             case ECoreType.sing_box:
-                return Global.SsSecuritiesInSingbox;
+                return Global.SsSecuritiesInXray;
         }
-        return Global.SsSecuritiesInSingbox;
+        return Global.SsSecuritiesInXray;
     }
 
     public ECoreType GetCoreType(ProfileItem? profileItem, EConfigType eConfigType)
     {
-        if (profileItem?.CoreType != null)
-        {
-            return (ECoreType)profileItem.CoreType;
-        }
-
-        var item = _config.CoreTypeItem?.FirstOrDefault(it => it.ConfigType == eConfigType);
-        return item?.CoreType ?? ECoreType.Xray;
+        _ = profileItem;
+        _ = eConfigType;
+        return ECoreType.Xray;
     }
 
     #endregion Core Type
