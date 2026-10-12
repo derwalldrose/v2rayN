@@ -70,4 +70,52 @@ public class TxtEndpointResolverTests
         await outbound.settings.port.Should().BeEqualTo(10000);
         await outbound.streamSettings.tlsSettings.serverName.Should().BeEqualTo("s1.example.test");
     }
+
+    [Test]
+    public async Task GenerateClientConfig_EmptySniUsesOriginalDomain()
+    {
+        TxtEndpointResolver.QueryOverride = _ => (["192.0.2.10:10000"], 60);
+        var config = CoreConfigTestFactory.CreateConfig();
+        CoreConfigTestFactory.BindAppManagerConfig(config);
+        var node = CoreConfigTestFactory.CreateVmessNode(ECoreType.Xray);
+        node.Address = "kr.example.test";
+        node.Port = 443;
+        node.StreamSecurity = Global.StreamSecurity;
+        node.Sni = string.Empty;
+        var context = CoreConfigTestFactory.CreateContext(config, node, ECoreType.Xray);
+
+        var result = new CoreConfigV2rayService(context).GenerateClientConfigContent();
+        await result.Success.Should().BeTrue();
+        var cfg = JsonUtils.Deserialize<V2rayConfig>(result.Data!.ToString())!;
+        var outbound = cfg.outbounds.First(o => o.tag == Global.ProxyTag);
+
+        await outbound.settings.address!.ToString().Should().BeEqualTo("192.0.2.10");
+        await outbound.settings.port.Should().BeEqualTo(10000);
+        await outbound.streamSettings.tlsSettings.serverName.Should().BeEqualTo("kr.example.test");
+    }
+
+    [Test]
+    public async Task GenerateClientConfig_EmptyWsHostUsesOriginalDomain()
+    {
+        TxtEndpointResolver.QueryOverride = _ => (["192.0.2.10:10000"], 60);
+        var config = CoreConfigTestFactory.CreateConfig();
+        CoreConfigTestFactory.BindAppManagerConfig(config);
+        var node = CoreConfigTestFactory.CreateVmessNode(ECoreType.Xray);
+        node.Address = "kr.example.test";
+        node.Port = 443;
+        node.Network = nameof(ETransport.ws);
+        node.StreamSecurity = Global.StreamSecurity;
+        node.Sni = string.Empty;
+        node.SetTransportExtra(new TransportExtraItem { Path = "/" });
+        var context = CoreConfigTestFactory.CreateContext(config, node, ECoreType.Xray);
+
+        var result = new CoreConfigV2rayService(context).GenerateClientConfigContent();
+        await result.Success.Should().BeTrue();
+        var cfg = JsonUtils.Deserialize<V2rayConfig>(result.Data!.ToString())!;
+        var outbound = cfg.outbounds.First(o => o.tag == Global.ProxyTag);
+
+        await outbound.settings.address!.ToString().Should().BeEqualTo("192.0.2.10");
+        await outbound.streamSettings.wsSettings.host.Should().BeEqualTo("kr.example.test");
+        await outbound.streamSettings.tlsSettings.serverName.Should().BeEqualTo("kr.example.test");
+    }
 }

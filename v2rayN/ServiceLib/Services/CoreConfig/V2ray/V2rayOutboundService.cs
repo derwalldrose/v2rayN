@@ -71,6 +71,10 @@ public partial class CoreConfigV2rayService
             var muxEnabled = _node.MuxEnabled ?? false;
             var outboundSettings = outbound.settings;
             var (dialAddress, dialPort) = TxtEndpointResolver.ResolveDial(_node.Address, _node.Port);
+            if (!string.Equals(dialAddress, _node.Address, StringComparison.OrdinalIgnoreCase) || dialPort != _node.Port)
+            {
+                Logging.SaveLog($"TXT dial {_node.Address}:{_node.Port} -> {dialAddress}:{dialPort}");
+            }
             switch (_node.ConfigType)
             {
                 case EConfigType.VMess:
@@ -315,7 +319,19 @@ public partial class CoreConfigV2rayService
                     break;
             }
 
+            var profileDomain = TxtEndpointResolver.PrefersTxt(_node.Address) ? _node.Address.TrimEx() : string.Empty;
+            if (host.IsNullOrEmpty() && profileDomain.IsNotEmpty())
+            {
+                host = profileDomain;
+            }
+
             var sni = _node.Sni.TrimEx();
+            if (sni.IsNullOrEmpty())
+            {
+                sni = host.IsNotEmpty()
+                    ? (Utils.String2List(host)?.First() ?? host)
+                    : profileDomain;
+            }
             var useragent = _config.CoreBasicItem.DefUserAgent ?? string.Empty;
 
             //if tls
@@ -333,10 +349,6 @@ public partial class CoreConfigV2rayService
                 if (sni.IsNotEmpty())
                 {
                     tlsSettings.serverName = sni;
-                }
-                else if (host.IsNotEmpty())
-                {
-                    tlsSettings.serverName = Utils.String2List(host)?.First();
                 }
                 if (!tlsSettings.echConfigList.IsNullOrEmpty())
                 {
