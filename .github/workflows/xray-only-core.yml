@@ -1,11 +1,10 @@
-name: Xray-only cores
+name: Xray-only Windows
 
 on:
   workflow_dispatch:
   push:
     branches:
       - feat/xray-only-core
-      - feat/txt-dynamic-endpoint
 
 permissions:
   contents: read
@@ -24,30 +23,120 @@ jobs:
       - name: Test
         run: dotnet test ./v2rayN/ServiceLib.Tests -c Release
 
-  slim-core-bin:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        pack: [v2rayN-windows-64, v2rayN-linux-64]
+  build-windows-64:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
-      - name: Download and slim official core-bin
+      - name: Purge SDKs
+        shell: pwsh
         run: |
-          set -euo pipefail
-          wget -nv -O "${{ matrix.pack }}.zip" \
-            "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/master/${{ matrix.pack }}.zip"
-          before=$(stat -c%s "${{ matrix.pack }}.zip")
-          bash scripts/slim-core-bin.sh "${{ matrix.pack }}.zip"
-          after=$(stat -c%s "${{ matrix.pack }}.zip")
-          echo "before=$before after=$after saved=$((before-after))" | tee "$GITHUB_STEP_SUMMARY"
-          unzip -l "${{ matrix.pack }}.zip" | tee listing.txt
-          ! grep -Ei 'sing-box|sing_box|mihomo|\.srs|geoip\.metadb|Country\.mmdb' listing.txt
-          grep -E 'bin/xray/xray' listing.txt
+          echo "Before:"
+          dotnet --list-sdks
+          dotnet --list-sdks | % {
+            $_ -match '^\S+\s+\[(.+)\]$' > $null
+            $d = Join-Path $Matches[1] $_.Split()[0]
+            Write-Host "Removing $d"
+            if ($IsWindows) { rm $d -r -fo } else { sudo rm -rf "$d" }
+          }
+          echo "After:"
+          dotnet --list-sdks 2>$null; $LASTEXITCODE=0
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.1xx
+
+      - name: Publish WPF v2rayN win-x64
+        shell: bash
+        working-directory: ./v2rayN
+        run: |
+          dotnet publish ./v2rayN/v2rayN.csproj \
+            -c Release -r win-x64 \
+            -p:SelfContained=true \
+            -p:EnableWindowsTargeting=true \
+            -o "${{ github.workspace }}/x64"
+
+      - name: Publish AmazTool win-x64
+        shell: bash
+        working-directory: ./v2rayN
+        run: |
+          dotnet publish ./AmazTool/AmazTool.csproj \
+            -c Release -r win-x64 \
+            -p:SelfContained=true \
+            -p:PublishTrimmed=true \
+            -p:EnableWindowsTargeting=true \
+            -o "${{ github.workspace }}/x64"
+
+      - name: Remove debug symbols
+        shell: bash
+        run: find x64 -type f -name '*.pdb' -delete
 
       - uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.pack }}-xray-only
-          path: ${{ matrix.pack }}.zip
+          name: x64
+          path: x64
           if-no-files-found: error
-          compression-level: 0
+
+  package-windows-64:
+    needs: [test, build-windows-64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Restore published app
+        uses: actions/download-artifact@v8
+        with:
+          name: x64
+          path: v2rayN-windows-64
+
+      - name: Get and slim official core-bin
+        run: |
+          set -euo pipefail
+          wget -nv -O v2rayN-windows-64.zip \
+            "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/master/v2rayN-windows-64.zip"
+          bash scripts/slim-core-bin.sh v2rayN-windows-64.zip
+
+      - name: Merge app into slimmed core-bin zip
+        run: |
+          set -euo pipefail
+          test -f v2rayN-windows-64/v2rayN.exe
+          test -f v2rayN-windows-64/AmazTool.exe
+          7z a -tZip v2rayN-windows-64.zip v2rayN-windows-64 -mx9
+          unzip -l v2rayN-windows-64.zip | tee listing.txt
+          grep -F 'v2rayN-windows-64/v2rayN.exe' listing.txt
+          grep -F 'v2rayN-windows-64/AmazTool.exe' listing.txt
+          grep -E 'v2rayN-windows-64/.+\.dll' listing.txt
+          grep -F 'v2rayN-windows-64/bin/xray/xray.exe' listing.txt
+          grep -F 'v2rayN-windows-64/bin/EnableLoopback.exe' listing.txt
+          grep -F 'v2rayN-windows-64/bin/geoip.dat' listing.txt
+          grep -F 'v2rayN-windows-64/bin/geosite.dat' listing.txt
+          ! grep -Ei 'sing-box|sing_box|mihomo|\.srs|geoip\.metadb|Country\.mmdb' listing.txt
+          python3 - <<'PY'
+          import zipfile
+          z = zipfile.ZipFile("v2rayN-windows-64.zip")
+          names = z.namelist()
+          required = [
+              "v2rayN-windows-64/v2rayN.exe",
+              "v2rayN-windows-64/AmazTool.exe",
+              "v2rayN-windows-64/bin/xray/xray.exe",
+              "v2rayN-windows-64/bin/xray/wintun.dll",
+              "v2rayN-windows-64/bin/EnableLoopback.exe",
+          ]
+          missing = [n for n in required if n not in names]
+          if missing:
+              raise SystemExit("missing: " + ", ".join(missing))
+          dlls = [n for n in names if n.startswith("v2rayN-windows-64/") and n.endswith(".dll") and "/bin/" not in n]
+          if len(dlls) < 3:
+              raise SystemExit(f"too few app DLLs: {dlls}")
+          print("files", len(names), "app_dlls", len(dlls), "bytes", sum(i.file_size for i in z.infolist()))
+          PY
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: v2rayN-windows-64-xray-only
+          path: v2rayN-windows-64.zip
+          if-no-files-found: error
+          compression-level: 9
